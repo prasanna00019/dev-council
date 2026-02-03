@@ -1,0 +1,56 @@
+# =========================
+# Global
+# =========================
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.log
+
+# =========================
+# Go (backend/)
+# =========================
+backend/bin/
+backend/tmp/
+backend/vendor/
+backend/*.exe
+backend/*.exe~
+backend/*.dll
+backend/*.so
+backend/*.dylib
+backend/*.test
+backend/*.out
+backend/coverage.out
+
+# Go workspace
+backend/go.work
+backend/go.work.sum
+
+# =========================
+# Next.js / Node (frontend/)
+# =========================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.turbo/
+frontend/.vercel/
+
+# Node logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# =========================
+# IDEs / Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS
+# =========================
+Thumbs.db
