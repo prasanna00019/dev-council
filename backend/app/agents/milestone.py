@@ -54,14 +54,6 @@ Your FINAL output MUST be a **Markdown file** with:
 
 ---
 
-## PERSISTENCE (MANDATORY)
-
-- Save the final document using `save_file`
-- Filename: `milestone.md`
-- Format: Markdown
-
----
-
 Begin.
 
 """
@@ -74,11 +66,10 @@ def get_milestone_agent():
         temperature=settings.OLLAMA_TEMPERATURE,
     )
 
-    tools = [save_file]
+    
 
     agent = create_agent(
         model=llm,
-        tools=tools,
         system_prompt=MILESTONE_TEMPLATE,
         debug=True,
     )

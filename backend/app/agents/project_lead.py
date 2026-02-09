@@ -14,42 +14,8 @@ that follows **IEEE 830 / ISO/IEC/IEEE 29148** structure.
 
 ## REQUIRED OUTPUT FORMAT (CRITICAL)
 
-Your FINAL output **MUST be a Markdown document** with the following SRS sections
-and headings **in this exact order**:
-
-1. Introduction  
-   1.1 Purpose  
-   1.2 Scope  
-   1.3 Definitions, Acronyms, and Abbreviations  
-   1.4 References  
-
-2. Overall Description  
-   2.1 Product Perspective  
-   2.2 Product Functions  
-   2.3 User Classes and Characteristics  
-   2.4 Operating Environment  
-   2.5 Constraints  
-   2.6 Assumptions and Dependencies  
-
-3. System Requirements  
-   3.1 Functional Requirements  
-   3.2 Non-Functional Requirements  
-
-4. Task Breakdown and LLM Assignment  
-   - MUST be presented as a table
-   - MUST contain **at least 5 subtasks**
-   - Each row MUST include:
-     - Task ID
-     - Task Description
-     - Expected Outcome
-     - Assigned LLM
-     - Justification
-
-5. Execution Plan  
-   5.1 Task Order  
-   5.2 Task Dependencies  
-
-6. Verification and Acceptance Criteria  
+Your FINAL output **MUST be a Markdown document** with the standardSRS sections
+and headings 
 
 ---
 
@@ -57,7 +23,6 @@ and headings **in this exact order**:
 
 You have access to the following tools:
 1. list_llms — returns available LLM model names
-2. save_file — saves files to disk
 
 ---
 
@@ -76,12 +41,6 @@ You have access to the following tools:
 4. **Task Assignment**
    - Assign exactly ONE LLM per subtask.
    - The LLM name MUST match **verbatim** one returned by `list_llms`.
-
-5. **Persistence** (CRITICAL)
-   - Save the final SRS document using `save_file`
-   - Filename: `project_lead.md`
-   - Format: Markdown
-
 ---
 
 ## STRICT RULES
@@ -90,7 +49,6 @@ You have access to the following tools:
 - NEVER include “Action Input” or tool call text in the final output.
 - NEVER reference LLMs not returned by `list_llms`.
 - The document MUST be valid SRS format and human-readable.
-
 ---
 
 Begin
@@ -104,7 +62,7 @@ def get_project_lead_agent():
         temperature=settings.OLLAMA_TEMPERATURE,
     )
 
-    tools = [list_llms, save_file]
+    tools = [list_llms]
 
     agent = create_agent(
         model=llm,
