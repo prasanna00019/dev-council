@@ -16,14 +16,16 @@ def clean_mermaid_code(code: str) -> str:
     return "\n" + code.strip()
 
 
-def generate_flow_diagram(mermaid_code: str) -> str:
+def generate_flow_diagram(mermaid_code: str, project_path: str) -> str:
     mermaid_code = clean_mermaid_code(mermaid_code)
     if hasattr(mermaid_code, "content"):
         mermaid_code = mermaid_code.content
 
     image_bytes = mm.get_mermaid_diagram("png", mermaid_code)
 
-    os.makedirs("outputs", exist_ok=True)
-    mm.save_diagram_as_image(path="outputs/flow_diagram.png", diagram=image_bytes)
+    os.makedirs(f"{project_path}/project", exist_ok=True)
+    mm.save_diagram_as_image(
+        path=f"{project_path}/project/flow_diagram.png", diagram=image_bytes
+    )
 
-    return "File saved to outputs/flow_diagram.png"
+    return f"File saved to {project_path}/project/flow_diagram.png"

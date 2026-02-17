@@ -7,9 +7,10 @@ def run():
     manager = get_manager()
 
     user_input = input("User request: ")
+    project_path = input("Project path: ")
 
     try:
-        manager.process_request(user_input)
+        manager.process_request(user_input, project_path)
 
     except Exception as e:
         print(f"Error: {e}")

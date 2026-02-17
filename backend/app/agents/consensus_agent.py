@@ -57,7 +57,7 @@ def get_consensus_agent(model_name: str):
 def get_manager_decision_agent():
     """Creates the manager decision chain using the main GPT model."""
     llm = ChatOllama(
-        model=settings.GPT_LLM,
+        model=settings.DEEPSEEK_LLM,
         base_url=settings.OLLAMA_URL,
         temperature=settings.OLLAMA_TEMPERATURE,
     )
