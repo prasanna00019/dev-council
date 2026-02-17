@@ -1,13 +1,10 @@
-import sys
-import time
 from typing import TypedDict, Literal, Annotated
 
-from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.graph import StateGraph, END, START
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-from rich.markdown import Markdown
 import pyfiglet
 
 from app.tools.mermaid import generate_flow_diagram
@@ -34,7 +31,6 @@ def extract_text(response) -> str:
     return str(response)
 
 
-
 def merge_dicts(a: dict, b: dict) -> dict:
     """Reducer: merges two dicts so parallel branches combine their proposals."""
     merged = a.copy() if a else {}
@@ -54,6 +50,7 @@ class ManagerState(TypedDict):
     current_milestone: str
     milestone_folder: str
     llm_proposals: Annotated[dict, merge_dicts]
+    project_path: str
     chosen_approach: str
 
 
@@ -88,9 +85,9 @@ def call_project_lead(state: ManagerState):
 
     plan_text = extract_text(response)
 
-    # Save artifacts
-    save_file("project_plan.md", plan_text)
-    markdown_to_pdf("project_plan.md", "project_plan.pdf")
+    project_path = state.get("project_path", "outputs")
+    save_file("project_plan.md", plan_text, base_path=project_path)
+    markdown_to_pdf("project_plan.md", "project_plan.pdf", base_path=project_path)
     console.print("[bold green]✓ Project plan saved[/bold green]")
 
     return {"project_plan": plan_text, "revision_needed": False}
@@ -99,9 +96,10 @@ def call_project_lead(state: ManagerState):
 def human_review(state: ManagerState):
     """Asks the user for review and sets the next path."""
     console.rule("[bold magenta]SRS Review[/bold magenta]")
+    project_path = state.get("project_path", "outputs")
     console.print(
         Panel(
-            f"[bold]Markdown:[/bold] outputs/project_plan.md\n[bold]PDF:[/bold]      outputs/project_plan.pdf",
+            f"[bold]Markdown:[/bold] {project_path}/project_plan.md\n[bold]PDF:[/bold]      {project_path}/project_plan.pdf",
             title="[bold blue]Documents Ready for Review[/bold blue]",
             border_style="green",
         )
@@ -152,8 +150,9 @@ def call_milestone(state: ManagerState):
         )
         milestones = extract_text(response)
 
-        save_file("milestone.md", milestones)
-        markdown_to_pdf("milestone.md", "milestone.pdf")
+        project_path = state.get("project_path", "outputs")
+        save_file("milestone.md", milestones, base_path=project_path)
+        markdown_to_pdf("milestone.md", "milestone.pdf", base_path=project_path)
 
     console.print("[bold green]✓ Milestones saved[/bold green]")
     return {"milestones": milestones}
@@ -176,7 +175,8 @@ def call_flow_diagram(state: ManagerState):
                 "[bold red]Warning: unexpected Mermaid code format[/bold red]"
             )
 
-        generate_flow_diagram(flow_diagram_code)
+        project_path = state.get("project_path", "outputs")
+        generate_flow_diagram(flow_diagram_code, project_path)
 
     console.print("[bold green]✓ Flow diagram generated[/bold green]")
     return {"flow_diagram_code": flow_diagram_code}
@@ -213,8 +213,9 @@ def call_tech_stack(state: ManagerState):
 
     tech_stack = extract_text(response)
 
-    save_file("tech_stack.md", tech_stack)
-    markdown_to_pdf("tech_stack.md", "tech_stack.pdf")
+    project_path = state.get("project_path", "outputs")
+    save_file("tech_stack.md", tech_stack, base_path=project_path)
+    markdown_to_pdf("tech_stack.md", "tech_stack.pdf", base_path=project_path)
     console.print("[bold green]✓ Tech stack saved[/bold green]")
 
     return {"tech_stack": tech_stack, "revision_needed": False}
@@ -223,9 +224,10 @@ def call_tech_stack(state: ManagerState):
 def tech_stack_review(state: ManagerState):
     """Asks the user for review of the tech stack."""
     console.rule("[bold magenta]Tech Stack Review[/bold magenta]")
+    project_path = state.get("project_path", "outputs")
     console.print(
         Panel(
-            f"[bold]Markdown:[/bold] outputs/tech_stack.md\n[bold]PDF:[/bold]      outputs/tech_stack.pdf",
+            f"[bold]Markdown:[/bold] {project_path}/tech_stack.md\n[bold]PDF:[/bold]      {project_path}/tech_stack.pdf",
             title="[bold blue]Tech Stack Ready for Review[/bold blue]",
             border_style="green",
         )
@@ -282,7 +284,12 @@ def pick_milestone(state: ManagerState):
     first_milestone = ""
     for line in lines:
         # Skip header rows and separator rows
-        if line.startswith("|") and "---" not in line and "Milestone" not in line and "Description" not in line:
+        if (
+            line.startswith("|")
+            and "---" not in line
+            and "Milestone" not in line
+            and "Description" not in line
+        ):
             cols = [col.strip() for col in line.split("|") if col.strip()]
             if len(cols) >= 2:
                 first_milestone = cols[1]  # Description column
@@ -292,13 +299,20 @@ def pick_milestone(state: ManagerState):
         first_milestone = "First milestone from the project plan"
 
     console.print(f"[bold]Selected Milestone:[/bold] {first_milestone}")
-    return {"current_milestone": first_milestone, "milestone_folder": "milestone_1", "llm_proposals": {}}
+    return {
+        "current_milestone": first_milestone,
+        "milestone_folder": "milestone_1",
+        "llm_proposals": {},
+    }
 
 
 def make_proposal_node(llm_name: str, model_name: str):
     """Factory: returns a node function that generates a proposal for the given LLM."""
+
     def propose(state: ManagerState):
-        console.print(f"[bold blue]  ➤ {llm_name} ({model_name}) proposing...[/bold blue]")
+        console.print(
+            f"[bold blue]  ➤ {llm_name} ({model_name}) proposing...[/bold blue]"
+        )
         agent = get_consensus_agent(model_name)
         milestone = state["current_milestone"]
         project_plan = state.get("project_plan", "")
@@ -320,8 +334,13 @@ def make_proposal_node(llm_name: str, model_name: str):
         folder = state.get("milestone_folder", "milestone_1")
         safe_name = llm_name.lower().replace(" ", "_")
         file_path = f"{folder}/proposal_{safe_name}.md"
-        save_file(file_path, f"# Proposal from {llm_name}\n\n{proposal}")
-        console.print(f"[dim]  Saved to outputs/{file_path}[/dim]")
+        project_path = state.get("project_path", "outputs")
+        save_file(
+            file_path,
+            f"# Proposal from {llm_name}\n\n{proposal}",
+            base_path=project_path,
+        )
+        console.print(f"[dim]  Saved to {project_path}/{file_path}[/dim]")
 
         # Merge into existing proposals
         existing = state.get("llm_proposals", {})
@@ -353,10 +372,7 @@ def manager_decision(state: ManagerState):
             f"Revise your decision based on the feedback."
         )
     else:
-        input_text = (
-            f"## Milestone\n{milestone}\n\n"
-            f"## Proposals\n{proposals_text}"
-        )
+        input_text = f"## Milestone\n{milestone}\n\n" f"## Proposals\n{proposals_text}"
 
     manager_agent = get_manager_decision_agent()
 
@@ -368,9 +384,14 @@ def manager_decision(state: ManagerState):
     # Wrap with heading to satisfy markdown-pdf hierarchy requirement
     folder = state.get("milestone_folder", "milestone_1")
     md_content = f"# Consensus Decision\n\n{chosen}"
-    save_file(f"{folder}/consensus_decision.md", md_content)
+    project_path = state.get("project_path", "outputs")
+    save_file(f"{folder}/consensus_decision.md", md_content, base_path=project_path)
     try:
-        markdown_to_pdf(f"{folder}/consensus_decision.md", f"{folder}/consensus_decision.pdf")
+        markdown_to_pdf(
+            f"{folder}/consensus_decision.md",
+            f"{folder}/consensus_decision.pdf",
+            base_path=project_path,
+        )
     except Exception as e:
         console.print(f"[bold yellow]⚠ PDF generation skipped: {e}[/bold yellow]")
     console.print("[bold green]✓ Manager decision saved[/bold green]")
@@ -382,9 +403,10 @@ def consensus_review(state: ManagerState):
     """HITL review for the manager's consensus decision."""
     console.rule("[bold magenta]Consensus Review[/bold magenta]")
     folder = state.get("milestone_folder", "milestone_1")
+    project_path = state.get("project_path", "outputs")
     console.print(
         Panel(
-            f"[bold]Markdown:[/bold] outputs/{folder}/consensus_decision.md\n[bold]PDF:[/bold]      outputs/{folder}/consensus_decision.pdf",
+            f"[bold]Markdown:[/bold] {project_path}/{folder}/consensus_decision.md\n[bold]PDF:[/bold]      {project_path}/{folder}/consensus_decision.pdf",
             title="[bold blue]Consensus Decision Ready for Review[/bold blue]",
             border_style="green",
         )
@@ -429,7 +451,6 @@ class ManagerAgent:
     def __init__(self):
         workflow = StateGraph(ManagerState)
 
-        # --- Existing nodes ---
         workflow.add_node("call_project_lead", call_project_lead)
         workflow.add_node("human_review", human_review)
         workflow.add_node("call_milestone", call_milestone)
@@ -437,20 +458,19 @@ class ManagerAgent:
         workflow.add_node("call_tech_stack", call_tech_stack)
         workflow.add_node("tech_stack_review", tech_stack_review)
 
-        # --- Consensus nodes ---
         workflow.add_node("pick_milestone", pick_milestone)
         workflow.add_node("manager_decision", manager_decision)
         workflow.add_node("consensus_review", consensus_review)
 
-        # Dynamically add one proposal node per available LLM
         available_llms = get_available_llms()
         proposal_node_names = []
         for llm_info in available_llms:
             node_name = f"propose_{llm_info['name']}"
             proposal_node_names.append(node_name)
-            workflow.add_node(node_name, make_proposal_node(llm_info["name"], llm_info["model"]))
+            workflow.add_node(
+                node_name, make_proposal_node(llm_info["name"], llm_info["model"])
+            )
 
-        # --- Edges ---
         workflow.add_edge(START, "call_project_lead")
         workflow.add_edge("call_project_lead", "human_review")
         workflow.add_conditional_edges("human_review", check_review)
@@ -460,11 +480,9 @@ class ManagerAgent:
         workflow.add_edge("call_tech_stack", "tech_stack_review")
         workflow.add_conditional_edges("tech_stack_review", check_tech_stack_review)
 
-        # Fan-out: pick_milestone -> all proposal nodes
         for node_name in proposal_node_names:
             workflow.add_edge("pick_milestone", node_name)
 
-        # Fan-in: all proposal nodes -> manager_decision
         for node_name in proposal_node_names:
             workflow.add_edge(node_name, "manager_decision")
 
@@ -473,14 +491,15 @@ class ManagerAgent:
 
         self.app = workflow.compile()
 
-    def process_request(self, user_query: str):
+    def process_request(self, user_query: str, project_path: str):
         title = pyfiglet.figlet_format("dev-council", font="slant")
         console.print(Text(title, style="bold magenta"))
 
         console.rule("[bold blue]New Request[/bold blue]")
         console.print(f"[bold]Requests:[/bold] {user_query}")
+        console.print(f"[bold]Project Path:[/bold] {project_path}")
 
-        initial_state = {"input": user_query}
+        initial_state = {"input": user_query, "project_path": project_path}
 
         self.app.invoke(initial_state)
 
