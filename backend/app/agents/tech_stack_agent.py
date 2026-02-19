@@ -1,3 +1,4 @@
+from langgraph.checkpoint.memory import InMemorySaver
 from langchain.agents import create_agent
 from langchain_ollama import ChatOllama
 from app.core.config import settings
@@ -32,7 +33,7 @@ Just the raw markdown table.
 """
 
 
-def get_tech_stack_agent():
+def get_tech_stack_agent(memory: InMemorySaver):
     llm = ChatOllama(
         model=settings.DEEPSEEK_LLM,
         base_url=settings.OLLAMA_URL,
@@ -40,8 +41,7 @@ def get_tech_stack_agent():
     )
 
     agent = create_agent(
-        model=llm,
-        system_prompt=TECH_STACK_AGENT_PROMPT,
+        model=llm, system_prompt=TECH_STACK_AGENT_PROMPT, checkpointer=memory
     )
 
     return agent

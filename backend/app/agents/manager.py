@@ -1,3 +1,4 @@
+from langgraph.checkpoint.memory import InMemorySaver
 from typing import TypedDict, Literal, Annotated
 
 from langchain_core.messages import HumanMessage, AIMessage
@@ -52,11 +53,12 @@ class ManagerState(TypedDict):
     llm_proposals: Annotated[dict, merge_dicts]
     project_path: str
     chosen_approach: str
+    memory: InMemorySaver
 
 
 def call_project_lead(state: ManagerState):
     """Generates or revises the project plan."""
-    project_lead = get_project_lead_agent()
+    project_lead = get_project_lead_agent(memory=state.get("memory"))
     user_query = state.get("input")
     revision_needed = state.get("revision_needed", False)
     current_plan = state.get("project_plan", "")
@@ -136,7 +138,7 @@ def call_milestone(state: ManagerState):
     """Generates milestones based on the plan."""
     console.rule("[bold cyan]Generating Milestones[/bold cyan]")
     with console.status("[bold green]Analyzing plan...", spinner="dots"):
-        milestone_agent = get_milestone_agent()
+        milestone_agent = get_milestone_agent(memory=state.get("memory"))
         project_plan = state["project_plan"]
 
         response = milestone_agent.invoke(
@@ -145,8 +147,9 @@ def call_milestone(state: ManagerState):
                     HumanMessage(
                         content=f"Create a milestone table based on this plan:\n\n{project_plan}"
                     )
-                ]
-            }
+                ],
+            },
+            {"configurable": {"thread_id": "1"}},
         )
         milestones = extract_text(response)
 
@@ -184,7 +187,7 @@ def call_flow_diagram(state: ManagerState):
 
 def call_tech_stack(state: ManagerState):
     """Generates or revises a tech stack based on the SRS document."""
-    tech_stack_agent = get_tech_stack_agent()
+    tech_stack_agent = get_tech_stack_agent(memory=state.get("memory"))
     project_plan = state["project_plan"]
     revision_needed = state.get("revision_needed", False)
     current_tech_stack = state.get("tech_stack", "")
@@ -208,7 +211,12 @@ def call_tech_stack(state: ManagerState):
         console.rule("[bold cyan]Generating Tech Stack[/bold cyan]")
         with console.status("[bold green]Designing tech stack...", spinner="dots"):
             response = tech_stack_agent.invoke(
-                {"messages": [HumanMessage(content=f"Project Plan:\n\n{project_plan}")]}
+                {
+                    "messages": [
+                        HumanMessage(content=f"Project Plan:\n\n{project_plan}")
+                    ]
+                },
+                {"configurable": {"thread_id": "1"}},
             )
 
     tech_stack = extract_text(response)
@@ -292,7 +300,7 @@ def pick_milestone(state: ManagerState):
         ):
             cols = [col.strip() for col in line.split("|") if col.strip()]
             if len(cols) >= 2:
-                first_milestone = cols[1]  # Description column
+                first_milestone = cols[1]
                 break
 
     if not first_milestone:

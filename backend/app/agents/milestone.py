@@ -1,3 +1,4 @@
+from langgraph.checkpoint.memory import InMemorySaver
 from app.structured_outputs.milestone import MilestoneOutput
 from app.tools.save_file import save_file
 from langchain.agents import create_agent
@@ -27,7 +28,7 @@ You will receive a project plan containing:
 - Requirements
 - Subtasks
 
-You must extract milestones from this input.
+You must extract coding milestones from this input.
 
 ---
 
@@ -56,7 +57,7 @@ Your FINAL output MUST be a **Markdown file** with:
 - **DO NOT** use fenced code blocks for the table.
 - **DO NOT** add extra headings, notes, or text.
 - **DO NOT** invent LLM names — get them from 'list_llms' tool.
-- Combine related subtasks into logical milestones.
+- Combine related subtasks into logical coding milestones.
 - Keep milestone descriptions short and action-oriented.
 - Planning only — no execution steps.
 
@@ -67,7 +68,7 @@ Begin.
 """
 
 
-def get_milestone_agent():
+def get_milestone_agent(memory: InMemorySaver):
     llm = ChatOllama(
         model=settings.GPT_LLM,
         base_url=settings.OLLAMA_URL,
@@ -78,6 +79,7 @@ def get_milestone_agent():
         model=llm,
         tools=tools,
         system_prompt=MILESTONE_TEMPLATE,
+        checkpointer=memory,
     )
 
     return agent

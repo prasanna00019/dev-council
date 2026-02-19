@@ -27,7 +27,7 @@ Your job is to evaluate all proposals and pick the BEST one.
 ## OUTPUT FORMAT (STRICT)
 - **Chosen LLM**: Name of the LLM you are assigning this task to.
 - **Reason**: 1-2 sentences on why this approach is best.
-- **Final Approach**: Copy the chosen approach as-is.
+- **Final Approach**: Best approach or combined approach you think will be best.
 
 ## RULES
 - Keep the ENTIRE response under 300 words.
